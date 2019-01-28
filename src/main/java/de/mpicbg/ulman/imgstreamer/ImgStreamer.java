@@ -23,6 +23,7 @@ import net.imglib2.img.planar.PlanarImg;
 import net.imglib2.img.planar.PlanarImgFactory;
 import net.imglib2.img.basictypeaccess.array.ArrayDataAccess;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.ByteType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.integer.ShortType;
@@ -79,7 +80,7 @@ public class ImgStreamer
 	private byte[] metadataBytes;
 	private long voxelBytesCount;
 
-	public <T extends NativeType<T>, A extends ArrayDataAccess<A>>
+	public <T extends RealType<T> & NativeType<T>, A extends ArrayDataAccess<A>>
 	void setImageForStreaming(final ImgPlus<T> imgToBeStreamed)
 	{
 		img = getUnderlyingImg(imgToBeStreamed);
@@ -121,7 +122,6 @@ public class ImgStreamer
 			sampleArray = ((PlanarImg<?,A>)img).getPlane(0).getCurrentStorageArray();
 		}
 		else
-		//if (img instanceof CellImg || img instanceof LazyCellImg)
 		if (img instanceof AbstractCellImg)
 		{
 			//DiskCachedCellImg<> and SCIFIOCellImg<> extends (besides other) LazyCellImg<>
@@ -232,8 +232,8 @@ public class ImgStreamer
 	}
 
 
-	public
-	ImgPlus<?> read(final InputStream is)
+	public <T extends RealType<T> & NativeType<T>>
+	ImgPlus<T> read(final InputStream is)
 	throws IOException
 	{
 		final DataInputStream dis = new DataInputStream(is);
@@ -275,14 +275,14 @@ public class ImgStreamer
 
 		//envelope/header message is (mostly) parsed,
 		//start creating the output image of the appropriate type
-		Img<? extends NativeType<?>> img = createImg(dims, backendStr, createVoxelType(typeStr), cellDims);
+		Img<T> img = createImg(dims, backendStr, createVoxelType(typeStr), cellDims);
 
 		if (img == null)
 			throw new RuntimeException("Unsupported image backend type, sorry.");
 
 		//the core Img is prepared, lets extend it with metadata and fill with voxel values afterwards
 		//create the ImgPlus from it -- there is fortunately no deep coping
-		ImgPlus<?> imgP = new ImgPlus<>(img);
+		ImgPlus<T> imgP = new ImgPlus<>(img);
 
 		//process the metadata
 		logger.info("processing the incoming metadata...");
