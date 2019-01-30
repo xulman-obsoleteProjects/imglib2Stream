@@ -16,6 +16,7 @@ import org.scijava.log.LogService;
 
 import net.imagej.ImageJ;
 import net.imagej.ImgPlus;
+import net.imglib2.type.numeric.RealType;
 
 import java.io.OutputStream;
 import java.io.FileOutputStream;
@@ -35,7 +36,7 @@ public class SendImage implements Command
 	private StatusService status;
 
 	@Parameter
-	private ImgPlus<?> imgP;
+	private ImgPlus<? extends RealType<?>> imgP;
 
 	// ----------- sending ----------- 
 	@Parameter(visibility = ItemVisibility.MESSAGE, persist = false, required = false)

@@ -15,6 +15,7 @@ import org.scijava.ItemIO;
 import org.scijava.app.StatusService;
 import org.scijava.log.LogService;
 import net.imagej.ImgPlus;
+import net.imglib2.type.numeric.RealType;
 
 import java.io.InputStream;
 import java.io.FileInputStream;
@@ -34,7 +35,7 @@ public class ReceiveImage implements Command
 	private StatusService status;
 
 	@Parameter(type = ItemIO.OUTPUT)
-	private ImgPlus<?> imgP;
+	private ImgPlus<? extends RealType<?>> imgP;
 
 	// ----------- receiving ----------- 
 	@Parameter(visibility = ItemVisibility.MESSAGE, persist = false, required = false, initializer="getHostURL")
@@ -96,7 +97,7 @@ public class ReceiveImage implements Command
 
 				final InputStream is
 					= new BufferedInputStream(new FileInputStream("/tmp/out.dat"), 1024000);
-				imgP = isv.read(is);
+				imgP = isv.readAsRealTypedImg(is);
 				is.close();
 			}
 			log.info("ReceiveImage plugin: received "+imgP.getName());
