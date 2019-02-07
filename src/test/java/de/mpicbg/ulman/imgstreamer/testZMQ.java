@@ -15,19 +15,14 @@ public class testZMQ
 
 			byte[] testSendArray = new byte[] { 97,120,98,99,100,97,98,99,100,97,98,99 };
 			zmqSocket.send(testSendArray);
+			for (int i=0; i < testSendArray.length; ++i) testSendArray[i]+=4;
+			zmqSocket.send(testSendArray);
 
 			final ZeroMQInputStream zis = new ZeroMQInputStream(3456, 5);
 			int nextVal = 0;
 			do {
 				nextVal = zis.read();
 				System.out.println("got now this value: "+nextVal);
-
-				if (nextVal == 120)
-				{
-					//modify the buffer to recognize it...
-					for (int i=0; i < testSendArray.length; ++i) testSendArray[i]+=4;
-					zmqSocket.send(testSendArray);
-				}
 			} while (nextVal > -1);
 
 			zmqSocket.close();
