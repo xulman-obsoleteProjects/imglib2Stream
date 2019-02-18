@@ -147,6 +147,7 @@ public class ZeroMQInputStream extends InputStream
 	throws IOException
 	{
 		buf = zmqSocket.recv();
+		System.out.println("readZMQ(): got buffer of length = "+buf.length);
 		if (buf == null)
 		    throw new IOException("network reading error");
 		lim = buf.length;

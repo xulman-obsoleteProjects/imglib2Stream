@@ -125,6 +125,8 @@ public class testZMQ
 			zmqSocket.connect("tcp://localhost:3456");
 			zmqSocket.send(os.toByteArray());
 
+			System.out.println("ByteArrayOutputStream.length = "+os.toByteArray().length);
+
 			final ZeroMQInputStream zis = new ZeroMQInputStream(3456, 10);
 			ImgPlus<? extends RealType<?>> imgPP = isv.readAsRealTypedImg(zis);
 

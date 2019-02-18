@@ -363,6 +363,7 @@ public class ImgStreamer
 	                              final StreamFeeders.StreamFeeder sf, final DataInputStream is)
 	throws IOException
 	{
+		System.out.println("avail for unpacking: "+is.available());
 		sf.read(is, img.update(null).getCurrentStorageArray());
 	}
 

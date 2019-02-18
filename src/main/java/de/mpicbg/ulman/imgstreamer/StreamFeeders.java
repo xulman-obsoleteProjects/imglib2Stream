@@ -42,12 +42,14 @@ public class StreamFeeders
 		public void write(final Object inArray, final DataOutputStream outStream) throws IOException
 		{
 			final short[] inShorts = (short[])inArray;
+			System.out.println("write(): short-type array-img length = "+inShorts.length);
 			for (int i=0; i < inShorts.length; ++i) outStream.writeShort(inShorts[i]);
 		}
 		@Override
 		public void read(final DataInputStream inStream, final Object outArray) throws IOException
 		{
 			final short[] outShorts = (short[])outArray;
+			System.out.println(" read(): short-type array-img length = "+outShorts.length);
 			for (int i=0; i < outShorts.length; ++i) outShorts[i]=inStream.readShort();
 		}
 	}
