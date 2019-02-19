@@ -296,6 +296,7 @@ public class testZMQ
 			System.out.println("--> send and receive images are the same: "
 				+areBothImagesTheSame(imgP,(ImgPlus)lrecv.imgPP) +"\n");
 
+		/*
 			//pull model
 			lserv.start();
 			Thread.sleep(2000);
@@ -335,6 +336,7 @@ public class testZMQ
 			lreq.join();
 			System.out.println("--> send and receive images are the same: "
 				+areBothImagesTheSame(imgP,(ImgPlus)lreq.imgPP) +"\n");
+		*/
 
 		} catch (InterruptedException e) {
 			e.printStackTrace();

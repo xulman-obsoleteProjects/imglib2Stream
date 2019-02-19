@@ -54,6 +54,7 @@ public class ZeroMQsession
 	void writeZMQ(byte[] buf, int pos)
 	throws IOException
 	{
+		System.out.println("writeZMQ() doing send()");
 		//send the data
 		zmqSocket.send(buf,0,pos,0);
 		//
@@ -65,6 +66,7 @@ public class ZeroMQsession
 		//so, we wait for the confirmation (that assures us the 'buf' has really
 		//been transmitted over), or complain
 
+		System.out.println("writeZMQ() waiting for confirmation");
 		//wait until we hear back from the recipient,
 		//or until we timeout
 		int waitTime = 0;
@@ -80,6 +82,8 @@ public class ZeroMQsession
 			}
 		}
 
+		System.out.println("writeZMQ() waiting is over");
+
 		if (isRecvReady())
 		{
 			final byte[] confMsg = zmqSocket.recv();
@@ -89,6 +93,8 @@ public class ZeroMQsession
 		}
 		else
 			throw new IOException("no confirmation detected even after "+waitTimeOut+" seconds");
+
+		System.out.println("writeZMQ() got confirmation");
 	}
 
 	/** Reads the ZMQ message into a new buffer.
@@ -104,6 +110,7 @@ public class ZeroMQsession
 	byte[] readZMQ()
 	throws IOException
 	{
+		System.out.println("readZMQ() waiting for message");
 		int waitTime = 0;
 		while (!isRecvReady() && waitTime < waitTimeOut)
 		{
@@ -117,16 +124,20 @@ public class ZeroMQsession
 			}
 		}
 
+		System.out.println("readZMQ() waiting is over");
+
 		if (isRecvReady())
 		{
 			byte[] buf = zmqSocket.recv();
 			if (buf == null)
 				 throw new IOException("network reading error");
 
+			System.out.println("readZMQ() sending confirmation");
 			zmqSocket.send(confirmationMsg);
 			return buf;
 		}
 
+		System.out.println("readZMQ() returning with empty buffer");
 		return zeroLengthByteArray;
 	}
 
