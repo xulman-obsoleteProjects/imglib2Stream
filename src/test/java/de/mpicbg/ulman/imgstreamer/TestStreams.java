@@ -6,9 +6,12 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.img.planar.PlanarImgFactory;
+import net.imglib2.test.ImgLib2Assert;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import org.junit.Test;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -17,12 +20,13 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 
-public class testStreams
-{
-	public static void main( String... args )
-	{
-		//testQueingOfObjectsInAStream();
+import static org.junit.Assert.assertEquals;
 
+public class TestStreams
+{
+	@Test
+	public void testImageTransfer()
+	{
 		for ( Class< ? extends NativeType > aClass : ImgStreamer.SUPPORTED_VOXEL_CLASSES )
 		{
 			try
@@ -69,8 +73,8 @@ public class testStreams
 		{
 			//create ImgPlus out of the input Img
 			ImgPlus< T > imgP = new ImgPlus<>( img );
-			imgP.setName( new String( "qwerty" ) );
-			imgP.setSource( new String( "qwertyiiii" ) );
+			imgP.setName( "qwerty" );
+			imgP.setSource( "qwertyiiii" );
 			imgP.setValidBits( 1024 );
 
 			//sample output stream
@@ -81,7 +85,7 @@ public class testStreams
 			//ImgStreamer isv = new ImgStreamer( new myLogger() );
 			ImgStreamer isv = new ImgStreamer( null );
 			isv.setImageForStreaming( imgP );
-			System.out.println( "stream length will be: " + isv.getOutputStreamLength() );
+			System.out.print( "stream length: " + isv.getOutputStreamLength() );
 			isv.write( os );
 			//
 			os.close();
@@ -94,9 +98,7 @@ public class testStreams
 			is.close();
 			System.out.println( "got this image: " + imgPP.getImg().toString()
 					+ " of " + imgPP.getImg().firstElement().getClass().getSimpleName() );
-
-			System.out.println( "--> send and receive images are the same: "
-					+ areBothImagesTheSame( imgP, ( ImgPlus ) imgPP ) );
+			ImgLib2Assert.assertImageEquals( imgP, imgPP, Object::equals );
 
 		}
 		catch ( IOException e )
@@ -105,50 +107,27 @@ public class testStreams
 		}
 	}
 
-	private static < T extends RealType< T >, U extends RealType< U > > boolean areBothImagesTheSame( final ImgPlus< T > imgA, final ImgPlus< U > imgB )
+	@Test
+	public void testQueingOfObjectsInAStream() throws IOException
 	{
-		Cursor< T > cA = imgA.getImg().cursor();
-		cA.jumpFwd( 50 );
-
-		Cursor< U > cB = imgB.getImg().cursor();
-		cB.jumpFwd( 50 );
-
-		if ( cA.get().getRealDouble() != cB.get().getRealDouble() )
-		{
-			System.out.println( "----------> PIXEL VALUES MISMATCH! <----------" );
-			return false;
-		}
-
-		//one test more never hurts...
-		cA.jumpFwd( 50 );
-		cB.jumpFwd( 50 );
-		if ( cA.get().getRealDouble() != cB.get().getRealDouble() )
-		{
-			System.out.println( "----------> PIXEL VALUES MISMATCH! <----------" );
-			return false;
-		}
-
-		return true;
-	}
-
-	private static void testQueingOfObjectsInAStream()
-	{
-		try
-		{
-			final ObjectOutputStream os = new ObjectOutputStream( new FileOutputStream( "/tmp/out.dat" ) );
-			os.writeUTF( "ahoj" );
-			os.writeUTF( "clovece" );
-			os.close();
-
-			final ObjectInputStream is = new ObjectInputStream( new FileInputStream( "/tmp/out.dat" ) );
-			System.out.println( is.readUTF() );
-			System.out.println( is.readUTF() );
-			is.close();
-		}
-		catch ( IOException e )
-		{
-			e.printStackTrace();
-		}
+		// setup
+		File tmpFile = File.createTempFile( "tmp", ".dat" );
+		tmpFile.deleteOnExit();
+		String expected1 = "ahoj";
+		String expected2 = "clovece";
+		// write
+		final ObjectOutputStream os = new ObjectOutputStream( new FileOutputStream( tmpFile ) );
+		os.writeUTF( expected1 );
+		os.writeUTF( expected2 );
+		os.close();
+		// read
+		final ObjectInputStream is = new ObjectInputStream( new FileInputStream( tmpFile ) );
+		String actual1 = is.readUTF();
+		String actual2 = is.readUTF();
+		is.close();
+		// test
+		assertEquals(expected1, actual1);
+		assertEquals(expected2, actual2);
 	}
 
 	private static < T extends RealType< T > > Img< T > fillImg( final Img< T > img )
