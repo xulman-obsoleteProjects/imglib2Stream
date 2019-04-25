@@ -48,7 +48,7 @@ public class testStreams
 		}
 	}
 
-	static class myLogger implements ProgressCallback
+	private static class myLogger implements ProgressCallback
 	{
 		@Override
 		public void info( String msg )
@@ -63,8 +63,7 @@ public class testStreams
 		}
 	}
 
-	static < T extends RealType< T > & NativeType< T > >
-	void testImgPlus( final Img< T > img )
+	private static < T extends RealType< T > & NativeType< T > > void testImgPlus( final Img< T > img )
 	{
 		try
 		{
@@ -106,8 +105,7 @@ public class testStreams
 		}
 	}
 
-	static < T extends RealType< T >, U extends RealType< U > >
-	boolean areBothImagesTheSame( final ImgPlus< T > imgA, final ImgPlus< U > imgB )
+	private static < T extends RealType< T >, U extends RealType< U > > boolean areBothImagesTheSame( final ImgPlus< T > imgA, final ImgPlus< U > imgB )
 	{
 		Cursor< T > cA = imgA.getImg().cursor();
 		cA.jumpFwd( 50 );
@@ -133,7 +131,7 @@ public class testStreams
 		return true;
 	}
 
-	static void testQueingOfObjectsInAStream()
+	private static void testQueingOfObjectsInAStream()
 	{
 		try
 		{
@@ -153,8 +151,7 @@ public class testStreams
 		}
 	}
 
-	static < T extends RealType< T > >
-	Img< T > fillImg( final Img< T > img )
+	private static < T extends RealType< T > > Img< T > fillImg( final Img< T > img )
 	{
 		long counter = 0;
 
