@@ -2,12 +2,11 @@ package de.mpicbg.ulman.imgstreamer;
 
 import net.imagej.ImgPlus;
 import net.imglib2.Cursor;
-import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.cell.CellImgFactory;
+import net.imglib2.test.RandomImgs;
+import net.imglib2.type.numeric.integer.GenericShortType;
 import net.imglib2.type.numeric.integer.ShortType;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
@@ -34,7 +33,21 @@ import java.util.concurrent.TimeUnit;
 @State( Scope.Benchmark )
 public class ImageStreamBenchmark
 {
-	Img< ShortType > image = new CellImgFactory<>( new ShortType() ).create( 100, 100 );
+	private Img< ShortType > image = RandomImgs.seed(42).randomize( ArrayImgs.shorts( 100, 100 ) );
+
+	private byte[] manyBytes = initBytes();
+
+	private byte[] initBytes()
+	{
+		try
+		{
+			return benchmarkImgStreamerSend().toByteArray();
+		}
+		catch ( IOException e )
+		{
+			throw new RuntimeException( e );
+		}
+	}
 
 	ProgressCallback dummyProgress = new ProgressCallback()
 	{
@@ -52,50 +65,66 @@ public class ImageStreamBenchmark
 	};
 
 	@Benchmark
-	public ImgPlus< ? > benchmarkStreamer() throws IOException
+	public ByteArrayOutputStream benchmarkImgStreamerSend() throws IOException
 	{
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
 		final ImgStreamer streamer = new ImgStreamer( dummyProgress );
 		streamer.setImageForStreaming( new ImgPlus<>( image ) );
 		streamer.write( output );
-		InputStream input = new ByteArrayInputStream( output.toByteArray() );
+		return output;
+	}
+
+	@Benchmark
+	public ImgPlus< ? > benchmarkImgStreamerReceive() throws IOException
+	{
+		final ImgStreamer streamer = new ImgStreamer( dummyProgress );
+		InputStream input = initStream();
 		return streamer.read( input );
 	}
 
 	@Benchmark
-	public RandomAccessibleInterval<ShortType> pixelStreamer() throws IOException
+	public ByteArrayOutputStream benchmarkPixelStreamerSend() throws IOException
 	{
-		// setup
 		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		// run
 		PixelStreamer.send( image, output );
-		InputStream input = new ByteArrayInputStream( output.toByteArray() );
-		return receive( input );
+		return output;
 	}
 
 	@Benchmark
-	public RandomAccessibleInterval<ShortType> simple() throws IOException
+	public Img< ShortType > benchmarkPixelStreamerReceive() throws IOException
 	{
-		// setup
-		ByteArrayOutputStream output = new ByteArrayOutputStream();
-		// run
-		DataOutputStream stream = new DataOutputStream( output );
+		final InputStream input = initStream();
+		final Img< ShortType > image = ArrayImgs.shorts( 100, 100 );
+		PixelStreamer.receive( input, image )	;
+		return image;
+	}
+
+	@Benchmark
+	public ByteArrayOutputStream benchmarkBaselineSend() throws IOException
+	{
+		final ByteArrayOutputStream output = new ByteArrayOutputStream();
+		final DataOutputStream stream = new DataOutputStream( output );
 		final Cursor< ShortType > cursor = Views.flatIterable( image ).cursor();
 		while ( cursor.hasNext() )
 			stream.writeShort( cursor.next().getShort() );
-		final Img< ShortType > copy = ArrayImgs.shorts( Intervals.dimensionsAsLongArray( this.image ) );
-		InputStream input = new ByteArrayInputStream( output.toByteArray() );
-		DataInputStream stream1 = new DataInputStream( input );
-		Cursor< ShortType > cursor1 = Views.flatIterable( copy ).cursor();
-		while ( cursor1.hasNext() )
-			cursor1.next().set( stream1.readShort() );
-		return copy;
+		return output;
 	}
 
-	private RandomAccessibleInterval<ShortType> receive( InputStream input ) throws IOException
+	@Benchmark
+	public Img< ShortType > benchmarkBaselineReceive() throws IOException
 	{
-		final Img< ShortType > image = ArrayImgs.shorts( Intervals.dimensionsAsLongArray( this.image ) );
-		return PixelStreamer.receive( input, image );
+		final InputStream inputStream = initStream();
+		final Img< ShortType > image1 = ArrayImgs.shorts( 100, 100 );
+		final Cursor< ? extends GenericShortType > cursor = Views.flatIterable( image1 ).cursor();
+		final DataInputStream input = new DataInputStream( inputStream );
+		while ( cursor.hasNext() )
+			cursor.next().setShort(input.readShort());
+		return image1;
+	}
+
+	private InputStream initStream()
+	{
+		return new ByteArrayInputStream( manyBytes );
 	}
 
 	public static void main( String... args ) throws RunnerException
