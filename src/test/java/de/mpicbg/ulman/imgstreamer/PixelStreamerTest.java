@@ -9,6 +9,7 @@ import net.imglib2.img.basictypeaccess.array.LongArray;
 import net.imglib2.test.ImgLib2Assert;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.logic.BitType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.ByteType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.integer.LongType;
@@ -48,7 +49,8 @@ public class PixelStreamerTest
 			new ValuePair<>( new LongType( 42 ), new byte[] { 0, 0, 0, 0, 0, 0, 0, 42 } ),
 			new ValuePair<>( new UnsignedLongType( 42 ), new byte[] { 0, 0, 0, 0, 0, 0, 0, 42 } ),
 			new ValuePair<>( new FloatType( 42 ), asBytes( 42f ) ),
-			new ValuePair<>( new DoubleType( 42 ), asBytes( 42.0 ) )
+			new ValuePair<>( new DoubleType( 42 ), asBytes( 42.0 ) ),
+			new ValuePair<>( new ARGBType( 42 ), new byte[] { 0, 0, 0, 42 } )
 	);
 
 	@Test

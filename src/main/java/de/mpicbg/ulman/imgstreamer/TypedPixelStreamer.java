@@ -4,6 +4,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.BooleanType;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.logic.BitType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.ByteType;
 import net.imglib2.type.numeric.integer.GenericByteType;
 import net.imglib2.type.numeric.integer.GenericIntType;
@@ -94,7 +95,8 @@ public class TypedPixelStreamer< T >
 			new TypedPixelStreamer<>( new UnsignedLongType(), "uint64", new GenericLongTypeConverter() ),
 			new TypedPixelStreamer<>( new LongType(), "int64", new GenericLongTypeConverter() ),
 			new TypedPixelStreamer<>( new FloatType(), "float32", new FloatTypeConverter() ),
-			new TypedPixelStreamer<>( new DoubleType(), "float64", new DoubleTypeConverter() )
+			new TypedPixelStreamer<>( new DoubleType(), "float64", new DoubleTypeConverter() ),
+			new TypedPixelStreamer<>( new ARGBType(), "arbg8", new ARGBTypeConverter() )
 	);
 
 	interface PixelConverter< T >
@@ -273,6 +275,23 @@ public class TypedPixelStreamer< T >
 			final DataInputStream stream = new DataInputStream( input );
 			while ( cursor.hasNext() )
 				cursor.next().setReal( stream.readDouble() );
+		}
+	}
+
+	private static class ARGBTypeConverter implements PixelConverter< ARGBType >
+	{
+		@Override
+		public void write( OutputStream output, Iterator< ARGBType > cursor ) throws IOException
+		{
+			while ( cursor.hasNext() )
+				writeInt( output, cursor.next().get() );
+		}
+
+		@Override
+		public void read( InputStream input, Iterator< ARGBType > cursor ) throws IOException
+		{
+			while ( cursor.hasNext() )
+				cursor.next().set( readInt( input ) );
 		}
 	}
 

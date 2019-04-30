@@ -7,6 +7,7 @@ import net.imglib2.type.BooleanType;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.logic.BitType;
 import net.imglib2.type.logic.BoolType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.type.numeric.integer.UnsignedLongType;
@@ -46,7 +47,8 @@ public class PixelStreamerBenchmark< T extends NativeType< T > >
 			new UnsignedIntType(),
 			new UnsignedLongType(),
 			new DoubleType(),
-			new FloatType()
+			new FloatType(),
+			new ARGBType()
 	);
 
 	@Param( "" )
