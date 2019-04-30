@@ -2,6 +2,7 @@ package de.mpicbg.ulman.imgstreamer;
 
 import net.imagej.ImgPlus;
 import net.imglib2.Cursor;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.test.RandomImgs;
@@ -25,6 +26,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 @Fork( 1 )
@@ -35,15 +37,17 @@ public class ImageStreamBenchmark
 {
 	private Img< ShortType > image = RandomImgs.seed(42).randomize( ArrayImgs.shorts( 100, 100 ) );
 
-	private byte[] manyBytes = initBytes();
+	private byte[] manyBytes = initBytes( () -> benchmarkImgStreamerSend() );
 
-	private byte[] initBytes()
+	private byte[] raiBytes = initBytes( () -> benchmarkRaiStreamerSend() );
+
+	private byte[] initBytes( Callable<ByteArrayOutputStream> supplier )
 	{
 		try
 		{
-			return benchmarkImgStreamerSend().toByteArray();
+			return supplier.call().toByteArray();
 		}
-		catch ( IOException e )
+		catch ( Exception e )
 		{
 			throw new RuntimeException( e );
 		}
@@ -97,6 +101,21 @@ public class ImageStreamBenchmark
 		final Img< ShortType > image = ArrayImgs.shorts( 100, 100 );
 		PixelStreamer.receive( input, image )	;
 		return image;
+	}
+
+	@Benchmark
+	public ByteArrayOutputStream benchmarkRaiStreamerSend() throws IOException
+	{
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		RandomAccessibleIntervalStreamer.write( image, output );
+		return output;
+	}
+
+	@Benchmark
+	public RandomAccessibleInterval<?> benchmarkRaiStreamerReceive() throws IOException
+	{
+		InputStream input = new ByteArrayInputStream( raiBytes );
+		return RandomAccessibleIntervalStreamer.read( input );
 	}
 
 	@Benchmark
