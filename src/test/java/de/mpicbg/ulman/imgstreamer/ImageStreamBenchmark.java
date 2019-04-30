@@ -5,8 +5,8 @@ import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.test.RandomImgs;
-import net.imglib2.type.numeric.integer.GenericShortType;
 import net.imglib2.type.numeric.integer.ShortType;
 import net.imglib2.view.Views;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -82,7 +82,7 @@ public class ImageStreamBenchmark
 	public ImgPlus< ? > benchmarkImgStreamerReceive() throws IOException
 	{
 		final ImgStreamer streamer = new ImgStreamer( dummyProgress );
-		InputStream input = initStream();
+		InputStream input = new ByteArrayInputStream( manyBytes );
 		return streamer.read( input );
 	}
 
@@ -97,9 +97,9 @@ public class ImageStreamBenchmark
 	@Benchmark
 	public Img< ShortType > benchmarkPixelStreamerReceive() throws IOException
 	{
-		final InputStream input = initStream();
+		final InputStream input = new ByteArrayInputStream( manyBytes );
 		final Img< ShortType > image = ArrayImgs.shorts( 100, 100 );
-		PixelStreamer.receive( input, image )	;
+		PixelStreamer.receive( input, image );
 		return image;
 	}
 
@@ -132,18 +132,13 @@ public class ImageStreamBenchmark
 	@Benchmark
 	public Img< ShortType > benchmarkBaselineReceive() throws IOException
 	{
-		final InputStream inputStream = initStream();
-		final Img< ShortType > image1 = ArrayImgs.shorts( 100, 100 );
-		final Cursor< ? extends GenericShortType > cursor = Views.flatIterable( image1 ).cursor();
+		final InputStream inputStream = new ByteArrayInputStream( manyBytes );
+		final Img< ShortType > image = ArrayImgs.shorts( 100, 100 );
+		final Cursor< ShortType > cursor = Views.flatIterable( image ).cursor();
 		final DataInputStream input = new DataInputStream( inputStream );
 		while ( cursor.hasNext() )
 			cursor.next().setShort(input.readShort());
-		return image1;
-	}
-
-	private InputStream initStream()
-	{
-		return new ByteArrayInputStream( manyBytes );
+		return image;
 	}
 
 	public static void main( String... args ) throws RunnerException
