@@ -72,7 +72,7 @@ public class ImgStreamer
 	private long voxelBytesCount;
 
 	public < T extends NativeType< T >, A extends ArrayDataAccess< A > >
-	void setImageForStreaming( final ImgPlus< T > imgToBeStreamed )
+	ImgStreamer setImageForStreaming( final ImgPlus< T > imgToBeStreamed )
 	{
 		img = getUnderlyingImg( imgToBeStreamed );
 		final NativeType<?> pixelType = img.firstElement();
@@ -141,6 +141,8 @@ public class ImgStreamer
 
 		//process the metadata....
 		metadataBytes = packAndSendPlusData( imgToBeStreamed );
+
+		return this;
 	}
 
 	public long getOutputStreamLength()
