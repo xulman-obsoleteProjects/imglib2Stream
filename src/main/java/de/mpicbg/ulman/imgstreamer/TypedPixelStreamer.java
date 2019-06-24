@@ -19,6 +19,7 @@ import net.imglib2.type.numeric.integer.UnsignedLongType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Fraction;
 import net.imglib2.view.Views;
 
 import java.io.DataInputStream;
@@ -36,6 +37,8 @@ public class TypedPixelStreamer< T >
 
 	private final T type;
 
+	private final Fraction entitiesPerPixel;
+
 	private final String typeString;
 
 	private final PixelConverter< T > converter;
@@ -45,11 +48,21 @@ public class TypedPixelStreamer< T >
 		this.type = type;
 		this.typeString = typeString;
 		this.converter = converter;
+
+		if ( type instanceof NativeType )
+			this.entitiesPerPixel = converter.getEntitiesPerPixel();
+		else
+			this.entitiesPerPixel = null;
 	}
 
 	public T type()
 	{
 		return this.type;
+	}
+
+	public Fraction getEntitiesPerPixel()
+	{
+		return this.entitiesPerPixel;
 	}
 
 	public String typeString()
@@ -121,6 +134,8 @@ public class TypedPixelStreamer< T >
 		void write( OutputStream output, Iterator< T > cursor ) throws IOException;
 
 		void read( InputStream input, Iterator< T > cursor ) throws IOException;
+
+		Fraction getEntitiesPerPixel();
 	}
 
 	private static class BooleanTypeConverter implements PixelConverter< BooleanType >
@@ -177,6 +192,12 @@ public class TypedPixelStreamer< T >
 					cursor.next().set( ( value & ( 1 << 7 ) ) != 0 );
 			}
 		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 1, 8 );
+		}
 	}
 
 	private static class GenericByteTypeConverter implements PixelConverter< GenericByteType >
@@ -195,6 +216,12 @@ public class TypedPixelStreamer< T >
 			final DataInputStream stream = new DataInputStream( input );
 			while ( cursor.hasNext() )
 				cursor.next().setByte( stream.readByte() );
+		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 1, 1 );
 		}
 	}
 
@@ -221,6 +248,12 @@ public class TypedPixelStreamer< T >
 				cursor.next().setShort( ( short ) ( ( a << 8 ) | b ) );
 			}
 		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 2, 1 );
+		}
 	}
 
 	private static class GenericIntTypeConverter implements PixelConverter< GenericIntType >
@@ -237,6 +270,12 @@ public class TypedPixelStreamer< T >
 		{
 			while ( cursor.hasNext() )
 				cursor.next().setInt( readInt( input ) );
+		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 4, 1 );
 		}
 	}
 
@@ -257,6 +296,12 @@ public class TypedPixelStreamer< T >
 			while ( cursor.hasNext() )
 				cursor.next().setLong( stream.readLong() );
 		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 8, 1 );
+		}
 	}
 
 	private static class FloatTypeConverter implements PixelConverter< FloatType >
@@ -273,6 +318,12 @@ public class TypedPixelStreamer< T >
 		{
 			while ( cursor.hasNext() )
 				cursor.next().setReal( Float.intBitsToFloat( readInt( input ) ) );
+		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 4, 1 );
 		}
 	}
 
@@ -293,6 +344,12 @@ public class TypedPixelStreamer< T >
 			while ( cursor.hasNext() )
 				cursor.next().setReal( stream.readDouble() );
 		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 8, 1 );
+		}
 	}
 
 	private static class ARGBTypeConverter implements PixelConverter< ARGBType >
@@ -309,6 +366,12 @@ public class TypedPixelStreamer< T >
 		{
 			while ( cursor.hasNext() )
 				cursor.next().set( readInt( input ) );
+		}
+
+		@Override
+		public Fraction getEntitiesPerPixel()
+		{
+			return new Fraction( 4, 1 );
 		}
 	}
 
