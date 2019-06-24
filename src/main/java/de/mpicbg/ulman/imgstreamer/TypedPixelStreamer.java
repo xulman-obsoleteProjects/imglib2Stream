@@ -84,6 +84,23 @@ public class TypedPixelStreamer< T >
 		throw new UnsupportedOperationException( "Unsupported pixel type: " + typeString );
 	}
 
+	public static TypedPixelStreamer< ? > forTypeClassName( String classNameString )
+	{
+		for ( TypedPixelStreamer< ? > converter : CONVERTERS )
+			if ( converter.type().getClass().getSimpleName().equals( classNameString ) )
+				return converter;
+		throw new UnsupportedOperationException( "Unsupported pixel type: " + classNameString );
+	}
+
+	public static < Q extends NativeType< Q > > TypedPixelStreamer< Q > forNativeTypeClassName( String classNameString )
+	{
+		for ( TypedPixelStreamer converter : CONVERTERS )
+			if ( converter.type().getClass().getSimpleName().equals( classNameString )
+					&& converter.type() instanceof NativeType )
+				return converter;
+		throw new UnsupportedOperationException( "Unsupported pixel type: " + classNameString );
+	}
+
 	private static final List< TypedPixelStreamer< ? > > CONVERTERS = Arrays.asList(
 			new TypedPixelStreamer<>( new BitType(), "bit", new BooleanTypeConverter() ),
 			new TypedPixelStreamer<>( new UnsignedByteType(), "uint8", new GenericByteTypeConverter() ),
