@@ -9,7 +9,7 @@ package de.mpicbg.ulman.imgstreamer;
 
 import net.imagej.Dataset;
 import net.imagej.ImgPlus;
-import net.imglib2.Cursor;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.AbstractImg;
 import net.imglib2.img.Img;
 import net.imglib2.img.WrappedImg;
@@ -18,37 +18,20 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.basictypeaccess.array.ArrayDataAccess;
 import net.imglib2.img.cell.AbstractCellImg;
 import net.imglib2.img.cell.Cell;
-import net.imglib2.img.cell.CellImg;
 import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.img.planar.PlanarImg;
 import net.imglib2.img.planar.PlanarImgFactory;
 import net.imglib2.type.NativeType;
-import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.integer.ByteType;
-import net.imglib2.type.numeric.integer.ShortType;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.type.numeric.integer.UnsignedShortType;
-import net.imglib2.type.numeric.real.DoubleType;
-import net.imglib2.type.numeric.real.FloatType;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.List;
 import java.util.StringTokenizer;
-
-import static de.mpicbg.ulman.imgstreamer.StreamFeeders.createStreamFeeder;
 
 public class ImgStreamer
 {
-	/// list of supported voxel types: so far only scalar images are supported
-	static public final List< Class< ? extends NativeType > > SUPPORTED_VOXEL_CLASSES
-			= Arrays.asList( ByteType.class, UnsignedByteType.class, ShortType.class,
-			UnsignedShortType.class, FloatType.class, DoubleType.class );
-
 	/// default logger that logs nowhere
 	static public final class EmptyProgressCallback implements ProgressCallback
 	{
@@ -76,29 +59,45 @@ public class ImgStreamer
 	//reference on the image to be streamed
 	private Img< ? extends NativeType< ? > > img;
 
-	//header and metadata (from ImgPlus) corresponding to the image
+	//reference on the TypedPixelStreamer that will serialize the pixel data
+	private TypedPixelStreamer< ? extends NativeType< ? > > relevantPixelStreamer;
+
+	//header corresponding to the image
 	private String headerMsg;
 
+	//metadata (from ImgPlus) corresponding to the image
 	private byte[] metadataBytes;
 
+	//image data size in bytes
 	private long voxelBytesCount;
 
 	public < T extends NativeType< T >, A extends ArrayDataAccess< A > >
 	void setImageForStreaming( final ImgPlus< T > imgToBeStreamed )
 	{
+		//test: is the input image non-empty?
 		img = getUnderlyingImg( imgToBeStreamed );
 		if ( img.size() == 0 )
-			throw new RuntimeException( "Refusing to stream an empty image..." );
+			throw new UnsupportedOperationException( "Refusing to stream an empty image..." );
 
-		Class< ? > voxelClass = img.firstElement().getClass();
-		if ( !SUPPORTED_VOXEL_CLASSES.contains( voxelClass ) )
-			throw new IllegalArgumentException( "Unsupported voxel type, sorry." );
+		//test (due to the limit of the protocol): bytes per pixel must be an integer
+		final NativeType<?> pixelType = img.firstElement();
+		if ( (pixelType.getEntitiesPerPixel().getNumerator() % pixelType.getEntitiesPerPixel().getDenominator()) != 0 )
+			throw new UnsupportedOperationException(
+					"Refusing to stream an image where pixels do not align to bytes (e.g. 12bits/pixel)..." );
+
+		/* this test is covered by the above test
+		if ( pixelType.getEntitiesPerPixel().getRatio() < 1.0 )
+			throw new RuntimeException( "Refusing to stream an image with multiple pixels per one byte (e.g. boolean pixels)..." );
+		*/
+
+		//also a test: throws an exception if the image is of non-supported voxel type
+		relevantPixelStreamer = TypedPixelStreamer.forType( pixelType );
 
 		//build the corresponding header:
 		//protocol version
-		headerMsg = new String( "v1" );
+		headerMsg = "v2";
 
-		//dimensionality data
+		//dimensionality of the image data (and its size in bytes)
 		voxelBytesCount = 1;
 		headerMsg += " dimNumber " + img.numDimensions();
 		for ( int i = 0; i < img.numDimensions(); ++i )
@@ -106,22 +105,19 @@ public class ImgStreamer
 			headerMsg += " " + img.dimension( i );
 			voxelBytesCount *= img.dimension( i );
 		}
+		voxelBytesCount *= pixelType.getEntitiesPerPixel().getRatio();
 
 		//decipher the voxel type
-		headerMsg += " " + voxelClass.getSimpleName();
+		headerMsg += " " + pixelType.getClass().getSimpleName();
 
-		//check we can handle the storage model of this image,
-		//and check the pixel size
-		Object sampleArray = null;
+		//check we can handle the storage model of this image
 		if ( img instanceof ArrayImg )
 		{
 			headerMsg += " ArrayImg ";
-			sampleArray = ( ( ArrayImg< ?, A > ) img ).update( null ).getCurrentStorageArray();
 		}
 		else if ( img instanceof PlanarImg )
 		{
 			headerMsg += " PlanarImg ";
-			sampleArray = ( ( PlanarImg< ?, A > ) img ).getPlane( 0 ).getCurrentStorageArray();
 		}
 		else
 			//if (img instanceof CellImg || img instanceof LazyCellImg)
@@ -138,32 +134,9 @@ public class ImgStreamer
 				headerMsg += " CellImg ";
 				for ( int i = 0; i < cellImg.numDimensions(); ++i )
 					headerMsg += cellImg.getCellGrid().cellDimension( i ) + " ";
-
-				sampleArray = cellImg.getCells().firstElement().getData().getCurrentStorageArray();
 			}
 			else
-				throw new RuntimeException( "Cannot determine the type of image, cannot stream it." );
-
-		long pixelSize;
-		if ( sampleArray instanceof byte[] )
-		{
-			pixelSize = 1;
-		}
-		else if ( sampleArray instanceof short[] )
-		{
-			pixelSize = 2;
-		}
-		else if ( sampleArray instanceof float[] )
-		{
-			pixelSize = 4;
-		}
-		else if ( sampleArray instanceof double[] )
-		{
-			pixelSize = 8;
-		}
-		else
-			throw new RuntimeException( "Unsupported voxel storage, sorry." );
-		voxelBytesCount *= pixelSize;
+				throw new UnsupportedOperationException( "Cannot determine the type of image backend, cannot stream it." );
 
 		//process the metadata....
 		metadataBytes = packAndSendPlusData( imgToBeStreamed );
@@ -174,7 +147,7 @@ public class ImgStreamer
 		return headerMsg.length() + metadataBytes.length + 4 + voxelBytesCount;
 	}
 
-	public < A extends ArrayDataAccess< A > >
+	public
 	void write( final OutputStream os )
 			throws IOException
 	{
@@ -196,33 +169,11 @@ public class ImgStreamer
 			//System.out.println("dos.size()="+dos.size());
 			throw new RuntimeException( "Metadata size calculation mismatch." );
 		}
+		dos.flush();
 
 		logger.info( "streaming the image data..." );
-		if ( img instanceof ArrayImg )
-		{
-			packAndSendArrayImg( ( ArrayImg ) img,
-					createStreamFeeder( ( ( ArrayImg< ?, A > ) img ).update( null ).getCurrentStorageArray() ),
-					dos );
-		}
-		else if ( img instanceof PlanarImg )
-		{
-			packAndSendPlanarImg( ( PlanarImg ) img,
-					createStreamFeeder( ( ( PlanarImg< ?, A > ) img ).getPlane( 0 ).getCurrentStorageArray() ),
-					dos );
-		}
-		else if ( img instanceof AbstractCellImg )
-		{
-			final AbstractCellImg< ?, A, Cell< A >, ? extends AbstractImg< Cell< A > > > cellImg
-					= ( AbstractCellImg< ?, A, Cell< A >, ? extends AbstractImg< Cell< A > > > ) img;
+		relevantPixelStreamer.write( (RandomAccessibleInterval)img, os );
 
-			packAndSendCellImg( cellImg,
-					createStreamFeeder( cellImg.getCells().firstElement().getData().getCurrentStorageArray() ),
-					dos );
-		}
-		else
-			throw new RuntimeException( "Unsupported image backend type, sorry." );
-
-		dos.flush();
 		logger.info( "streaming finished." );
 	}
 
@@ -242,8 +193,8 @@ public class ImgStreamer
 		//process the header
 		logger.info( "found header: " + header );
 		StringTokenizer headerST = new StringTokenizer( header, " " );
-		if ( !headerST.nextToken().startsWith( "v1" ) )
-			throw new RuntimeException( "Unknown protocol, expecting protocol v1." );
+		if ( !headerST.nextToken().startsWith( "v2" ) )
+			throw new UnsupportedOperationException( "Unknown protocol, expecting protocol v2." );
 
 		if ( !headerST.nextToken().startsWith( "dimNumber" ) )
 			throw new RuntimeException( "Incorrect protocol, expecting dimNumber." );
@@ -267,12 +218,20 @@ public class ImgStreamer
 				cellDims[ i ] = Integer.valueOf( headerST.nextToken() );
 		}
 
+		//also a test: throws an exception if the image is of non-supported voxel type
+		relevantPixelStreamer = TypedPixelStreamer.forNativeTypeClassName( typeStr );
+
 		//envelope/header message is (mostly) parsed,
 		//start creating the output image of the appropriate type
-		Img< ? extends NativeType< ? > > img = createImg( dims, backendStr, createVoxelType( typeStr ), cellDims );
+		//NB: we can afford casting via raw types because the variable
+		//    was assigned from a method that returns the wanted type
+		Img< ? > img = createImg( dims, backendStr, (NativeType)relevantPixelStreamer.type(), cellDims );
 
 		if ( img == null )
-			throw new RuntimeException( "Unsupported image backend type, sorry." );
+			throw new RuntimeException( "Failed to create an image of the requested image backend, sorry." );
+
+		if ( img.size() == 0 )
+			throw new UnsupportedOperationException( "Refusing to stream an empty image..." );
 
 		//the core Img is prepared, lets extend it with metadata and fill with voxel values afterwards
 		//create the ImgPlus from it -- there is fortunately no deep coping
@@ -282,30 +241,8 @@ public class ImgStreamer
 		logger.info( "processing the incoming metadata..." );
 		receiveAndUnpackPlusData( metadata, imgP );
 
-		if ( img.size() == 0 )
-			throw new RuntimeException( "Refusing to stream an empty image..." );
-
 		logger.info( "processing the incoming image data..." );
-		if ( img instanceof ArrayImg )
-		{
-			receiveAndUnpackArrayImg( ( ArrayImg ) img,
-					createStreamFeeder( ( ( ArrayImg< ?, ? extends ArrayDataAccess< ? > > ) img ).update( null ).getCurrentStorageArray() ),
-					dis );
-		}
-		else if ( img instanceof PlanarImg )
-		{
-			receiveAndUnpackPlanarImg( ( PlanarImg ) img,
-					createStreamFeeder( ( ( PlanarImg< ?, ? extends ArrayDataAccess< ? > > ) img ).getPlane( 0 ).getCurrentStorageArray() ),
-					dis );
-		}
-		else if ( img instanceof CellImg )
-		{
-			receiveAndUnpackCellImg( ( CellImg ) img,
-					createStreamFeeder( ( ( CellImg< ?, ? extends ArrayDataAccess< ? > > ) img ).getCells().firstElement().getData().getCurrentStorageArray() ),
-					dis );
-		}
-		else
-			throw new RuntimeException( "Unsupported image backend type, sorry." );
+		relevantPixelStreamer.read( is, (RandomAccessibleInterval)img );
 
 		logger.info( "processing finished." );
 		return imgP;
@@ -391,61 +328,6 @@ public class ImgStreamer
 		return i;
 	}
 
-	// -------- support for the transmission of the payload/voxel data --------
-	protected static < A extends ArrayDataAccess< A > >
-	void packAndSendArrayImg( final ArrayImg< ?, A > img,
-			final StreamFeeders.StreamFeeder sf, final DataOutputStream os )
-			throws IOException
-	{
-		sf.write( img.update( null ).getCurrentStorageArray(), os );
-	}
-
-	protected static < A extends ArrayDataAccess< A > >
-	void receiveAndUnpackArrayImg( final ArrayImg< ?, A > img,
-			final StreamFeeders.StreamFeeder sf, final DataInputStream is )
-			throws IOException
-	{
-		sf.read( is, img.update( null ).getCurrentStorageArray() );
-	}
-
-	protected static < A extends ArrayDataAccess< A > >
-	void packAndSendPlanarImg( final PlanarImg< ?, A > img,
-			final StreamFeeders.StreamFeeder sf, final DataOutputStream os )
-			throws IOException
-	{
-		for ( int slice = 0; slice < img.numSlices(); ++slice )
-			sf.write( img.getPlane( slice ).getCurrentStorageArray(), os );
-	}
-
-	protected static < A extends ArrayDataAccess< A > >
-	void receiveAndUnpackPlanarImg( final PlanarImg< ?, A > img,
-			final StreamFeeders.StreamFeeder sf, final DataInputStream is )
-			throws IOException
-	{
-		for ( int slice = 0; slice < img.numSlices(); ++slice )
-			sf.read( is, img.getPlane( slice ).getCurrentStorageArray() );
-	}
-
-	protected static < A extends ArrayDataAccess< A > >
-	void packAndSendCellImg( final AbstractCellImg< ?, A, Cell< A >, ? extends AbstractImg< Cell< A > > > img,
-			final StreamFeeders.StreamFeeder sf, final DataOutputStream os )
-			throws IOException
-	{
-		Cursor< Cell< A > > cell = img.getCells().cursor();
-		while ( cell.hasNext() )
-			sf.write( cell.next().getData().getCurrentStorageArray(), os );
-	}
-
-	protected static < A extends ArrayDataAccess< A > >
-	void receiveAndUnpackCellImg( final AbstractCellImg< ?, A, Cell< A >, ? extends AbstractImg< Cell< A > > > img,
-			final StreamFeeders.StreamFeeder sf, final DataInputStream is )
-			throws IOException
-	{
-		Cursor< Cell< A > > cell = img.getCells().cursor();
-		while ( cell.hasNext() )
-			sf.read( is, cell.next().getData().getCurrentStorageArray() );
-	}
-
 	// -------- the types war --------
 	/*
 	 * Keeps unwrapping the input image \e img
@@ -463,22 +345,6 @@ public class ImgStreamer
 			return img;
 	}
 
-	@SuppressWarnings( "rawtypes" ) // use raw type because of insufficient support of reflexive types in java
-	private static NativeType createVoxelType( String typeStr )
-	{
-		for ( Class< ? extends NativeType > aClass : SUPPORTED_VOXEL_CLASSES )
-			if ( typeStr.startsWith( aClass.getSimpleName() ) )
-				try
-				{
-					return aClass.newInstance();
-				}
-				catch ( InstantiationException | IllegalAccessException e )
-				{
-					throw new RuntimeException( e );
-				}
-		throw new IllegalArgumentException( "Unsupported voxel type, sorry." );
-	}
-
 	private static < T extends NativeType< T > >
 	Img< T > createImg( int[] dims, String backendStr, T type, int... cellDims )
 	{
@@ -488,6 +354,6 @@ public class ImgStreamer
 			return new PlanarImgFactory<>( type ).create( dims );
 		if ( backendStr.startsWith( "CellImg" ) )
 			return new CellImgFactory<>( type, cellDims ).create( dims );
-		throw new RuntimeException( "Unsupported image backend type, sorry." );
+		throw new UnsupportedOperationException( "Unsupported image backend, sorry." );
 	}
 }
