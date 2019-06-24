@@ -74,38 +74,39 @@ public class ImgStreamer
 	public < T extends NativeType< T >, A extends ArrayDataAccess< A > >
 	void setImageForStreaming( final ImgPlus< T > imgToBeStreamed )
 	{
-		//test: is the input image non-empty?
 		img = getUnderlyingImg( imgToBeStreamed );
+		final NativeType<?> pixelType = img.firstElement();
+
+		//test: is the input image non-empty?
 		if ( img.size() == 0 )
 			throw new UnsupportedOperationException( "Refusing to stream an empty image..." );
 
+		//also a test: throws an exception if the image is of non-supported voxel type
+		relevantPixelStreamer = TypedPixelStreamer.forType( pixelType );
+
 		//test (due to the limit of the protocol): bytes per pixel must be an integer
-		final NativeType<?> pixelType = img.firstElement();
-		if ( (pixelType.getEntitiesPerPixel().getNumerator() % pixelType.getEntitiesPerPixel().getDenominator()) != 0 )
+		if ( (relevantPixelStreamer.getEntitiesPerPixel().getNumerator() % relevantPixelStreamer.getEntitiesPerPixel().getDenominator()) != 0 )
 			throw new UnsupportedOperationException(
 					"Refusing to stream an image where pixels do not align to bytes (e.g. 12bits/pixel)..." );
 
 		/* this test is covered by the above test
-		if ( pixelType.getEntitiesPerPixel().getRatio() < 1.0 )
+		if ( relevantPixelStreamer.getEntitiesPerPixel().getRatio() < 1.0 )
 			throw new RuntimeException( "Refusing to stream an image with multiple pixels per one byte (e.g. boolean pixels)..." );
 		*/
-
-		//also a test: throws an exception if the image is of non-supported voxel type
-		relevantPixelStreamer = TypedPixelStreamer.forType( pixelType );
 
 		//build the corresponding header:
 		//protocol version
 		headerMsg = "v2";
 
 		//dimensionality of the image data (and its size in bytes)
-		voxelBytesCount = 1;
+		voxelBytesCount  = relevantPixelStreamer.getEntitiesPerPixel().getNumerator();
+		voxelBytesCount /= relevantPixelStreamer.getEntitiesPerPixel().getDenominator();
 		headerMsg += " dimNumber " + img.numDimensions();
 		for ( int i = 0; i < img.numDimensions(); ++i )
 		{
 			headerMsg += " " + img.dimension( i );
 			voxelBytesCount *= img.dimension( i );
 		}
-		voxelBytesCount *= pixelType.getEntitiesPerPixel().getRatio();
 
 		//decipher the voxel type
 		headerMsg += " " + pixelType.getClass().getSimpleName();
