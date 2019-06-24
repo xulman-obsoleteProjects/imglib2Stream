@@ -227,14 +227,6 @@ public class ImgStreamer
 	}
 
 	// -------- streaming stuff IN --------
-	public ImgPlus< ? extends RealType< ? > > readAsRealTypedImg( final InputStream is )
-			throws IOException
-	{
-		// this is a hack but we can afford it because the this.SUPPORTED_VOXEL_CLASSES
-		// contains only RealType-extensible voxel types
-		return ( ImgPlus ) read( is );
-	}
-
 	public ImgPlus< ? > read( final InputStream is )
 			throws IOException
 	{
