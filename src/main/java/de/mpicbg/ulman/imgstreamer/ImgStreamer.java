@@ -181,7 +181,7 @@ public class ImgStreamer
 	}
 
 	// -------- streaming stuff IN --------
-	public ImgPlus< ? > read( final InputStream is )
+	public ImgPlus< ? extends NativeType< ? > > read( final InputStream is )
 			throws IOException
 	{
 		final DataInputStream dis = new DataInputStream( is );
@@ -238,7 +238,7 @@ public class ImgStreamer
 
 		//the core Img is prepared, lets extend it with metadata and fill with voxel values afterwards
 		//create the ImgPlus from it -- there is fortunately no deep coping
-		ImgPlus< ? > imgP = new ImgPlus<>( img );
+		ImgPlus< ? extends NativeType< ? > > imgP = new ImgPlus( img );
 
 		//process the metadata
 		logger.info( "processing the incoming metadata..." );
