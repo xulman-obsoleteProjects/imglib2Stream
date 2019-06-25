@@ -18,7 +18,7 @@ public interface ProgressCallback
 	 * It is assumed that the parameter is submitted further to some
 	 * loggin widget.
 	 */
-	void info(final String msg);
+	void info( final String msg );
 
 	/**
 	 * Report an indication back to the caller of how far the worker is with its work.
@@ -27,5 +27,5 @@ public interface ProgressCallback
 	 * "all work is done". It is assumed that the parameter is submitted
 	 * further to some progress bar widgets.
 	 */
-	void setProgress(final float howFar);
+	void setProgress( final float howFar );
 }

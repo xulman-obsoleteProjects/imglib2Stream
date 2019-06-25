@@ -13,102 +13,104 @@ import java.io.IOException;
 
 public class StreamFeeders
 {
-	public static
-	interface StreamFeeder
+	public static interface StreamFeeder
 	{
-		void write(final Object inArray, final DataOutputStream outStream) throws IOException;
-		void  read(final DataInputStream inStream, final Object outArray) throws IOException;
+		void write( final Object inArray, final DataOutputStream outStream ) throws IOException;
+
+		void read( final DataInputStream inStream, final Object outArray ) throws IOException;
 	}
 
-	public static
-	class ByteStreamFeeder implements StreamFeeder
+	public static class ByteStreamFeeder implements StreamFeeder
 	{
 		@Override
-		public void write(final Object inArray, final DataOutputStream outStream) throws IOException
+		public void write( final Object inArray, final DataOutputStream outStream ) throws IOException
 		{
-			outStream.write((byte[])inArray);
+			outStream.write( ( byte[] ) inArray );
 		}
-		@Override
-		public void read(final DataInputStream inStream, final Object outArray) throws IOException
-		{
-			inStream.readFully((byte[])outArray);
-		}
-	}
 
-	public static
-	class ShortStreamFeeder implements StreamFeeder
-	{
 		@Override
-		public void write(final Object inArray, final DataOutputStream outStream) throws IOException
+		public void read( final DataInputStream inStream, final Object outArray ) throws IOException
 		{
-			final short[] inShorts = (short[])inArray;
-			for (int i=0; i < inShorts.length; ++i) outStream.writeShort(inShorts[i]);
-		}
-		@Override
-		public void read(final DataInputStream inStream, final Object outArray) throws IOException
-		{
-			final short[] outShorts = (short[])outArray;
-			for (int i=0; i < outShorts.length; ++i) outShorts[i]=inStream.readShort();
+			inStream.readFully( ( byte[] ) outArray );
 		}
 	}
 
-	public static
-	class FloatStreamFeeder implements StreamFeeder
+	public static class ShortStreamFeeder implements StreamFeeder
 	{
 		@Override
-		public void write(final Object inArray, final DataOutputStream outStream) throws IOException
+		public void write( final Object inArray, final DataOutputStream outStream ) throws IOException
 		{
-			final float[] inFloats = (float[])inArray;
-			for (int i=0; i < inFloats.length; ++i) outStream.writeFloat(inFloats[i]);
+			final short[] inShorts = ( short[] ) inArray;
+			for ( int i = 0; i < inShorts.length; ++i )
+				outStream.writeShort( inShorts[ i ] );
 		}
+
 		@Override
-		public void read(final DataInputStream inStream, final Object outArray) throws IOException
+		public void read( final DataInputStream inStream, final Object outArray ) throws IOException
 		{
-			final float[] outFloats = (float[])outArray;
-			for (int i=0; i < outFloats.length; ++i) outFloats[i]=inStream.readFloat();
+			final short[] outShorts = ( short[] ) outArray;
+			for ( int i = 0; i < outShorts.length; ++i )
+				outShorts[ i ] = inStream.readShort();
 		}
 	}
 
-	public static
-	class DoubleStreamFeeder implements StreamFeeder
+	public static class FloatStreamFeeder implements StreamFeeder
 	{
 		@Override
-		public void write(final Object inArray, final DataOutputStream outStream) throws IOException
+		public void write( final Object inArray, final DataOutputStream outStream ) throws IOException
 		{
-			final double[] inDoubles = (double[])inArray;
-			for (int i=0; i < inDoubles.length; ++i) outStream.writeDouble(inDoubles[i]);
+			final float[] inFloats = ( float[] ) inArray;
+			for ( int i = 0; i < inFloats.length; ++i )
+				outStream.writeFloat( inFloats[ i ] );
 		}
+
 		@Override
-		public void read(final DataInputStream inStream, final Object outArray) throws IOException
+		public void read( final DataInputStream inStream, final Object outArray ) throws IOException
 		{
-			final double[] outDoubles = (double[])outArray;
-			for (int i=0; i < outDoubles.length; ++i) outDoubles[i]=inStream.readDouble();
+			final float[] outFloats = ( float[] ) outArray;
+			for ( int i = 0; i < outFloats.length; ++i )
+				outFloats[ i ] = inStream.readFloat();
 		}
 	}
 
-	public static
-	StreamFeeder createStreamFeeder(final Object sampleArray)
+	public static class DoubleStreamFeeder implements StreamFeeder
 	{
-		if (sampleArray instanceof byte[])
+		@Override
+		public void write( final Object inArray, final DataOutputStream outStream ) throws IOException
+		{
+			final double[] inDoubles = ( double[] ) inArray;
+			for ( int i = 0; i < inDoubles.length; ++i )
+				outStream.writeDouble( inDoubles[ i ] );
+		}
+
+		@Override
+		public void read( final DataInputStream inStream, final Object outArray ) throws IOException
+		{
+			final double[] outDoubles = ( double[] ) outArray;
+			for ( int i = 0; i < outDoubles.length; ++i )
+				outDoubles[ i ] = inStream.readDouble();
+		}
+	}
+
+	public static StreamFeeder createStreamFeeder( final Object sampleArray )
+	{
+		if ( sampleArray instanceof byte[] )
 		{
 			return new ByteStreamFeeder();
 		}
-		else
-		if (sampleArray instanceof short[])
+		else if ( sampleArray instanceof short[] )
 		{
 			return new ShortStreamFeeder();
 		}
-		else
-		if (sampleArray instanceof float[])
+		else if ( sampleArray instanceof float[] )
 		{
 			return new FloatStreamFeeder();
 		}
-		else
-		if (sampleArray instanceof double[])
+		else if ( sampleArray instanceof double[] )
 		{
 			return new DoubleStreamFeeder();
 		}
 		else
-			throw new RuntimeException("Unsupported voxel storage, sorry.");
+			throw new RuntimeException( "Unsupported voxel storage, sorry." );
 	}
 }
