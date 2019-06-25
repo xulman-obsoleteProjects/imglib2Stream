@@ -8,6 +8,7 @@ import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.img.planar.PlanarImgFactory;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.*;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
@@ -99,6 +100,68 @@ public class ImgStreamerTest
 				e.printStackTrace();
 			}
 		}
+	}
+
+	@Test
+	public void complainOnARGBasRealType()
+	{
+		Img< ARGBType > refImage = RandomImgs.seed(42).randomize(
+				new ArrayImgFactory( new ARGBType( 42 ) ).create( 201, 100, 5 ) );
+
+		System.out.println("Trying ArrayImg of type "+refImage.firstElement().getClass().getSimpleName()
+				+" and size of "+refImage.size()+" pixels -- should get an exception");
+		boolean wasExceptionTriggered = false;
+
+		try
+		{
+			streamer.setImageForStreaming( new ImgPlus( refImage ) );
+			ByteArrayOutputStream output = new ByteArrayOutputStream( (int)streamer.getOutputStreamLength() );
+			streamer.write( output );
+
+			assertEquals( output.size(), streamer.getOutputStreamLength() );
+
+			ByteArrayInputStream input = new ByteArrayInputStream( output.toByteArray() );
+			streamer.readAsRealTypedImg( input ).getImg();
+		}
+		catch ( IOException e )
+		{
+			wasExceptionTriggered = true;
+			System.out.println("IOException for "+refImage.firstElement().getClass().getSimpleName()
+					+": "+e.getMessage());
+		}
+
+		assertEquals(true, wasExceptionTriggered);
+	}
+
+	@Test
+	public void goWellOnUnsignedShortasRealType()
+	{
+		Img< UnsignedShortType > refImage = RandomImgs.seed(42).randomize(
+				new ArrayImgFactory( new UnsignedShortType( 42 ) ).create( 201, 100, 5 ) );
+
+		System.out.println("Trying ArrayImg of type "+refImage.firstElement().getClass().getSimpleName()
+				+" and size of "+refImage.size()+" pixels -- should go well (w/o exception)");
+		boolean wasExceptionTriggered = false;
+
+		try
+		{
+			streamer.setImageForStreaming( new ImgPlus( refImage ) );
+			ByteArrayOutputStream output = new ByteArrayOutputStream( (int)streamer.getOutputStreamLength() );
+			streamer.write( output );
+
+			assertEquals( output.size(), streamer.getOutputStreamLength() );
+
+			ByteArrayInputStream input = new ByteArrayInputStream( output.toByteArray() );
+			streamer.readAsRealTypedImg( input ).getImg();
+		}
+		catch ( IOException e )
+		{
+			wasExceptionTriggered = true;
+			System.out.println("IOException for "+refImage.firstElement().getClass().getSimpleName()
+					+": "+e.getMessage());
+		}
+
+		assertEquals(false, wasExceptionTriggered);
 	}
 
 	private Img< ? > sendAndReceiveImg( final Img< ? > image ) throws IOException
