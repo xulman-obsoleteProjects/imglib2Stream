@@ -14,6 +14,8 @@ import net.imagej.Dataset;
 import net.imagej.DefaultDataset;
 import net.imagej.ImageJ;
 import net.imagej.ImgPlus;
+import net.imagej.axis.Axes;
+import net.imagej.axis.CalibratedAxis;
 import net.imglib2.type.numeric.RealType;
 
 import org.scijava.Context;
@@ -50,6 +52,15 @@ public class StreamingBug {
 		Dataset out;
 		try (InputStream ins = Files.newInputStream(path)) {
 			ImgPlus<? extends RealType<?>> img = is.readAsRealTypedImg(ins);
+
+			//grab _reference_ (-> no need to .set() later) on the axes definitions
+			CalibratedAxis[] axes = new CalibratedAxis[img.numDimensions()];
+			img.axes(axes);
+
+			//re-define (the semantics of) the last axis: from UNKNOWN to CHANNEL,
+			//knowing the axis is actually a color axis allows to have coloured image displayed
+			axes[2].setType(Axes.CHANNEL);
+
 			out = new DefaultDataset(context, img);
 		}
 		
