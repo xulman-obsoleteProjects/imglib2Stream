@@ -112,10 +112,4 @@ public class ImgStreamerTest
 		ByteArrayInputStream input = new ByteArrayInputStream( output.toByteArray() );
 		return streamer.read( input ).getImg();
 	}
-
-	public static void main( String... args )
-	{
-		//run all tests
-		new ImgStreamerTest().checkSendAndReceive();
-	}
 }
