@@ -22,6 +22,8 @@ import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.img.planar.PlanarImg;
 import net.imglib2.img.planar.PlanarImgFactory;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
+import net.imglib2.util.Util;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -249,6 +251,20 @@ public class ImgStreamer
 
 		logger.info( "processing finished." );
 		return imgP;
+	}
+
+	public ImgPlus< ? extends RealType< ? > > readAsRealTypedImg( final InputStream is )
+			throws IOException
+	{
+		//read from the stream and determine the voxel type
+		ImgPlus< ? extends NativeType< ? > > imgP = read( is );
+		NativeType< ? > type = Util.getTypeFromInterval( imgP );
+
+		//return the image as an image with RealType-extensible voxels only if possible to do so
+		if (type instanceof RealType)
+			return ( ImgPlus ) imgP;
+		else
+			throw new IOException("Input stream contains an image with non-RealType pixels.");
 	}
 
 	// -------- support for the transmission of the image metadata --------
